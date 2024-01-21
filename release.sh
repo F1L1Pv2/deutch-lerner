@@ -3,6 +3,7 @@
 set -xe
 
 sh build.sh
+rm -rfv release
 mkdir -p release
 cp main.exe release
 cp -r audio release/audio
