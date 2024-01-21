@@ -1,3 +1,5 @@
+#define _CRT_SECURE_NO_WARNINGS
+
 #define MINIAUDIO_IMPLEMENTATION
 #include "miniaudio.h"
 
@@ -14,6 +16,11 @@
 #include <functional> 
 #include <cctype>
 #include <locale>
+#include <vector>
+
+#include <iostream>
+#include <fstream>
+#include <filesystem>
 
 using namespace std;
 
@@ -21,23 +28,23 @@ using namespace std;
 #define PASS_SOUND "audio/pass.mp3"
 
 // trim from start
-inline std::string &ltrim(std::string &s) {
-    s.erase(s.begin(), std::find_if(s.begin(), s.end(),
-            std::not1(std::ptr_fun<int, int>(std::isspace))));
-    return s;
-}
+// inline std::string &ltrim(std::string &s) {
+//     s.erase(s.begin(), std::find_if(s.begin(), s.end(),
+//             std::not1(std::ptr_fun<int, int>(std::isspace))));
+//     return s;
+// }
 
-// trim from end
-inline std::string &rtrim(std::string &s) {
-    s.erase(std::find_if(s.rbegin(), s.rend(),
-            std::not1(std::ptr_fun<int, int>(std::isspace))).base(), s.end());
-    return s;
-}
+// // trim from end
+// inline std::string &rtrim(std::string &s) {
+//     s.erase(std::find_if(s.rbegin(), s.rend(),
+//             std::not1(std::ptr_fun<int, int>(std::isspace))).base(), s.end());
+//     return s;
+// }
 
-// trim from both ends
-inline std::string &trim(std::string &s) {
-    return ltrim(rtrim(s));
-}
+// // trim from both ends
+// inline std::string &trim(std::string &s) {
+//     return ltrim(rtrim(s));
+// }
 
 int levenshteinDist(string word1, string word2) {
     int size1 = word1.size();
@@ -79,47 +86,15 @@ int levenshteinDist(string word1, string word2) {
 }
 
 
+
+
 struct deutche{
-    string firstForm;
-    string secondForm;
-    string polish;
+    vector<string> forms;
     bool did = false;
 };
 
-deutche nauka[] = {
- {"finden "," fand"," znajdować"},
- {"kommen "," kam"," przychodzić"},
- {"sitzen "," sass"," siedzieć"},
- {"sprechen "," sprach"," mówić"},
- {"treffen "," traf"," spotykać"},
- {"einladen "," lud...ein"," zapraszać"},
- {"fahren "," fuhr "," jechać"},
- {"fliegen "," flog "," latać"},
- {"verlieren "," verlor"," zgubić"},
- {"ziehen "," zog "," przeprowadzac się"},
- {"anhalten "," hielt...an "," zatrzymać"},
- {"anrufen "," rief...an "," dzwonić"},
- {"aussteigen "," stieg...aus "," wysiadać"},
- {"schreiben "," schreib "," pisać"},
- {"gehen "," ging "," iść"},
- {"bringen "," brachte "," przynosić"},
- {"denken "," dachte "," myśleć"},
- {"werden "," wurde "," zostać"},
- {"wissen "," wusste "," wiedzieć"},
- {"verbringen "," verbrachte "," spędzać "},
- {"sich unterhalten ","sich unterhielt "," rozmawiać"},
- {"zukommen "," kam...zu "," podchodzić"},
- {"sehen "," sah "," widzieć"},
- {"essen "," ass "," jeść"},
- {"laufen "," lief "," biec"},
- {"lesen "," las "," czytać"},
- {"nehmen "," nahm "," brać"},
- {"schlafen "," schlief "," spać"},
- {"tragen "," trug "," nosić"},
- {"trinken "," trank "," pić"},
- {"gewinnen "," gewann "," wygrać "},
- {"sein "," war "," być"},
-};
+vector<deutche> nauka;
+vector<string> forms;
 
 
 void init(){
@@ -136,7 +111,7 @@ void init(){
 
 bool check_all_did(){
     
-    for(int i = 0; i < sizeof(nauka)/sizeof(deutche); i++){
+    for(int i = 0; i < nauka.size(); i++){
         if(!nauka[i].did)
             return false;
     }
@@ -149,7 +124,7 @@ ma_engine engine;
 
 int get_index(){
 
-    int index = rand()%(sizeof(nauka)/sizeof(deutche));
+    int index = rand()%nauka.size();
 
 
     if (check_all_did()){
@@ -166,7 +141,7 @@ int get_index(){
     }
 
     while(nauka[index].did){
-        index = rand()%(sizeof(nauka)/sizeof(deutche));
+        index = rand()%nauka.size();
     }
 
 
@@ -175,8 +150,8 @@ int get_index(){
 
 
 bool check_win(string a_f, string b_f){
-    string a = trim(a_f);
-    string b = trim(b_f);
+    string a = a_f;
+    string b = b_f;
     int result = levenshteinDist(a, b);
 
     if(result == 0){
@@ -197,18 +172,18 @@ bool check_win(string a_f, string b_f){
 string get_input(string msg){
     cout << msg << endl << "> ";
     string out;
-    //cin >> out;
-    getline(cin, out);
-    
+    cin >> out;
     return out;
 }
 
-bool give_first_form(int index){
-    return check_win(nauka[index].firstForm, get_input("Napisz pierwszą formę"));
+string get_form(string form_name){
+    string msg = "Napisz ";
+    msg += form_name;
+    return get_input(msg);
 }
 
-bool give_second_form(int index){
-    return check_win(nauka[index].secondForm, get_input("Napisz drugą formę"));
+bool give_form(int index, int form_index){
+    return check_win(nauka.at(index).forms.at(form_index), get_form(forms.at(form_index)));
 }
 
 
@@ -218,9 +193,98 @@ bool give_second_form(int index){
 #define GB(x) ((unsigned long long)1024 * MB(x))
 
 
+// for string delimiter
+std::vector<std::string> split(std::string s, std::string delimiter) {
+    size_t pos_start = 0, pos_end, delim_len = delimiter.length();
+    std::string token;
+    std::vector<std::string> res;
 
+    while ((pos_end = s.find(delimiter, pos_start)) != std::string::npos) {
+        token = s.substr (pos_start, pos_end - pos_start);
+        pos_start = pos_end + delim_len;
+        res.push_back (token);
+    }
+
+    res.push_back (s.substr (pos_start));
+    return res;
+}
+
+void parse_file(string filename, vector<deutche>& parsed_file){
+    
+    ifstream file(filename);
+
+    string line;
+
+    size_t pos = 0;
+    string delimiter = ",";
+    string token;
+    size_t max_forms = -1;
+    size_t line_index = 1;
+    while(getline(file,line)){
+        if(line.length()>0){
+            vector<string> tokens = split(line, delimiter);
+            if(max_forms == -1){
+                max_forms = tokens.size();
+            }
+            if(tokens.size() > max_forms){
+                cerr << "Line " << line_index<<": has more forms than maximum" << max_forms << "specified at the first line"<<endl;
+                exit(1);
+            }
+
+            deutche learn;
+
+            learn.forms = tokens;
+            parsed_file.push_back(learn);
+
+            line_index += 1;
+        }
+    }
+
+}
+
+namespace fs = std::filesystem;
 
 int main(){
+
+    init();
+
+    std::string path = "presets";
+    size_t i = 0;
+    cout << "Wybierz preset: "<<endl;
+    vector<string> Paths;
+    for (const auto & entry : fs::directory_iterator(path)){
+        cout << i << ": "<< entry.path().filename().generic_string() << std::endl;
+        
+        Paths.push_back(entry.path().generic_string());
+
+        i++;
+    }
+
+    cout << "> ";
+
+    string choice;
+    cin >> choice;
+
+    int choice_int;
+
+    try{
+        choice_int = stoi(choice); 
+    }catch(exception &err){
+        cerr<<"Podano nieprawidłową wartość" << endl;
+        exit(1);
+    }
+
+    if(choice_int > Paths.size() || choice_int<0){
+        cerr<<"nie isntieje taki plik"<<endl;
+        exit(1);
+    }
+
+    parse_file(Paths.at(choice_int), nauka);
+
+    forms = nauka[0].forms;
+
+    nauka.erase(nauka.begin());
+
 
     ma_result result;
     sound = (ma_sound*)calloc(2,sizeof(ma_sound));
@@ -243,30 +307,35 @@ int main(){
 
     
 
-    init();
 
     system("cls");
 
     while(true){
         int rand_index = get_index();
+
         
-        cout << trim(nauka[rand_index].polish) << endl;
 
-        bool firstForm = give_first_form(rand_index);
-        if(!firstForm){
-            Sleep(2000);
-            goto next_thing;
-        }
-        bool secondForm = give_second_form(rand_index);
+        cout << nauka.at(rand_index).forms.at(0) << endl;
 
-        nauka[rand_index].did = firstForm && secondForm;
-        if(nauka[rand_index].did)
+       nauka[rand_index].did = true;
+
+       for(size_t i = 1; i<nauka.at(rand_index).forms.size(); i++){
+            nauka[rand_index].did = give_form(rand_index,i);
+        
+            if(!nauka.at(rand_index).did){
+                Sleep(2000);
+                break;
+            }
+       }
+
+        if(nauka.at(rand_index).did){
             ma_engine_play_sound(&engine, PASS_SOUND, NULL);
-        Sleep(1000);
-next_thing:
+            Sleep(1000);
+        }
+
         system("cls");
-        if(nauka[rand_index].did){
-            cout << "Brawo udalo ci sie to nauczyc " << nauka[rand_index].polish << endl;
+        if(nauka.at(rand_index).did){
+            cout << "Brawo udalo ci sie to nauczyc \"" << nauka.at(rand_index).forms.at(0) << "\"" << endl;
             cout << "---------------------------------------------------" << endl;
             
         }

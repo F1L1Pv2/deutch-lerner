@@ -1,2 +1,4 @@
-main.exe
+*.exe
+*.ilk
+*.pdb
 deutcheLerner.tar
